@@ -32,15 +32,29 @@ fi
 
 log_info "Initializing Cachy AI Tools ecosystem for user '${TARGET_USER}'..."
 
-# 1. Install NodeJS and NPM if missing
+# 1. Install NodeJS and NPM if missing, or handle incompatible Node 25+ versions
 if command -v node &>/dev/null && command -v npm &>/dev/null; then
-    log_info "NodeJS and NPM are already installed: $(node -v)"
-else
-    log_info "NodeJS/NPM not found. Bootstrapping via pacman..."
-    if pacman -S --needed --noconfirm nodejs npm; then
-        log_success "Successfully installed NodeJS and NPM."
+    NODE_VERSION_STR=$(node -v)
+    NODE_MAJOR=$(echo "$NODE_VERSION_STR" | sed 's/v//' | cut -d. -f1 || echo "0")
+    
+    if [ "$NODE_MAJOR" -ge 25 ]; then
+        log_warn "Your NodeJS version ($NODE_VERSION_STR) is >= v25. Native SQLite3 bindings do not support Node v25+."
+        log_info "Switching to NodeJS stable LTS (nodejs-lts-jod, v22) to avoid addon compilation errors..."
+        if pacman -S --noconfirm nodejs-lts-jod npm; then
+            log_success "Successfully switched to NodeJS LTS (Jod: $(node -v))."
+        else
+            log_error "Failed to switch NodeJS to LTS version automatically. Please run: sudo pacman -S nodejs-lts-jod npm"
+            exit 1
+        fi
     else
-        log_error "Failed to install Node/NPM. Check your repositories or internet connection."
+        log_info "NodeJS and NPM are already installed and compatible: $NODE_VERSION_STR"
+    fi
+else
+    log_info "NodeJS/NPM not found. Bootstrapping stable LTS via pacman..."
+    if pacman -S --needed --noconfirm nodejs-lts-jod npm; then
+        log_success "Successfully installed NodeJS LTS and NPM."
+    else
+        log_error "Failed to install Node LTS / NPM. Check your repositories or internet connection."
         exit 1
     fi
 fi
