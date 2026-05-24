@@ -40,18 +40,30 @@ if command -v node &>/dev/null && command -v npm &>/dev/null; then
     if [ "$NODE_MAJOR" -ge 25 ]; then
         log_warn "Your NodeJS version ($NODE_VERSION_STR) is >= v25. Native SQLite3 bindings do not support Node v25+."
         log_info "Switching to NodeJS stable LTS (nodejs-lts-jod, v22) to avoid addon compilation errors..."
+        
+        # Remove conflicting package explicitly to prevent pacman aborting on --noconfirm defaults
+        log_info "Removing conflicting standard nodejs package..."
+        pacman -Rdd --noconfirm nodejs || log_warn "Could not remove standard nodejs package safely."
+        
         if pacman -S --noconfirm nodejs-lts-jod npm; then
             log_success "Successfully switched to NodeJS LTS (Jod: $(node -v))."
         else
-            log_error "Failed to switch NodeJS to LTS version automatically. Please run: sudo pacman -S nodejs-lts-jod npm"
+            log_error "Failed to switch NodeJS to LTS version. Please run: sudo pacman -S nodejs-lts-jod npm"
             exit 1
         fi
     else
         log_info "NodeJS and NPM are already installed and compatible: $NODE_VERSION_STR"
     fi
 else
-    log_info "NodeJS/NPM not found. Bootstrapping stable LTS via pacman..."
-    if pacman -S --needed --noconfirm nodejs-lts-jod npm; then
+    log_info "NodeJS or NPM not fully found. Bootstrapping stable LTS via pacman..."
+    
+    # Check if standard nodejs is installed and conflicts
+    if pacman -Q nodejs &>/dev/null && ! pacman -Q nodejs-lts-jod &>/dev/null; then
+        log_info "Removing conflicting standard nodejs package before LTS install..."
+        pacman -Rdd --noconfirm nodejs || log_warn "Could not remove standard nodejs package safely."
+    fi
+    
+    if pacman -S --noconfirm nodejs-lts-jod npm; then
         log_success "Successfully installed NodeJS LTS and NPM."
     else
         log_error "Failed to install Node LTS / NPM. Check your repositories or internet connection."
