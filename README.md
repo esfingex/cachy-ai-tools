@@ -14,7 +14,7 @@ This project isolates AI agent developer environments from your core system twea
    - Initializes configurations and sets up user-space permissions.
 
 2. **`prompts/` (High-Efficiency Rules)**
-   - Includes **`antigravity-direct.md`**, a custom system prompt template designed to strip out conversational pleasantries, adverbs, and filler words, reducing output tokens by approximately 70% while keeping technical substance intact.
+   - Includes **`ai-rules.md`**, a custom system prompt template designed to strip out conversational pleasantries, adverbs, and filler words, reducing output tokens by approximately 70% while keeping technical substance intact.
 
 ---
 
@@ -49,7 +49,7 @@ sudo ./setup.sh
   ```bash
   npx skills add JuliusBrussee/caveman
   ```
-- Use the rules defined in `prompts/antigravity-direct.md` inside your agent's system configurations to ensure highly terse and efficient outputs.
+- Use the rules defined in `prompts/ai-rules.md` inside your agent's system configurations to ensure highly terse and efficient outputs.
 
 ---
 
