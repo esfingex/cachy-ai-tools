@@ -1,4 +1,4 @@
-# Antigravity Direct Mode - System Prompt Template
+# AI Direct Mode - System Prompt Template
 
 Copy and append this prompt to your AI developer agent's system configurations or rules files to enforce a terse, extremely token-efficient, and technically precise communication style (Caveman/Direct hybrid).
 
