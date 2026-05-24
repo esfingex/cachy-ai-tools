@@ -87,6 +87,10 @@ stop_workers() {
     
     log_info "Stopping remote cavemem worker..."
     ssh -p "$REMOTE_PORT" "${REMOTE_USER}@${REMOTE_HOST}" "cavemem stop" >/dev/null 2>&1 || true
+    
+    # Wait for workers to fully shutdown and checkpoint SQLite database
+    log_info "Waiting for database files to release safely..."
+    sleep 2
 }
 
 start_workers() {
