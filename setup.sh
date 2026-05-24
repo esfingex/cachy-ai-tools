@@ -125,12 +125,6 @@ if command -v npx &>/dev/null; then
     # Global installation
     log_info "Installing global caveman skills..."
     sudo -u "$TARGET_USER" npx -y skills add JuliusBrussee/caveman -g --agent antigravity -y || log_warn "Could not install global caveman skills."
-    
-    # Local installation
-    SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-    log_info "Installing project-level caveman skills in ${SCRIPT_DIR}..."
-    cd "$SCRIPT_DIR"
-    sudo -u "$TARGET_USER" npx -y skills add JuliusBrussee/caveman --agent antigravity -y || log_warn "Could not install local caveman skills."
 fi
 
 log_success "Ecosystem setup completed successfully!"
