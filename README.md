@@ -43,7 +43,26 @@ sudo ./setup.sh
   ```
   Open your web browser at: [http://127.0.0.1:37777](http://127.0.0.1:37777)
 
-### 2. Output Token Compressor (`caveman`)
+### 2. Network Sync Utility (`cavemem-sync`)
+Keep your memory databases perfectly synchronized between your developer machines (e.g. your ASUS M16 laptop and a desktop) over LAN:
+- **Set up the remote connection details:**
+  ```bash
+  ./scripts/cavemem-sync.sh setup
+  ```
+- **Check sync status (compares local vs. remote DB dates):**
+  ```bash
+  ./scripts/cavemem-sync.sh status
+  ```
+- **Push local memory database to remote host:**
+  ```bash
+  ./scripts/cavemem-sync.sh push
+  ```
+- **Pull remote memory database to local host:**
+  ```bash
+  ./scripts/cavemem-sync.sh pull
+  ```
+
+### 3. Output Token Compressor (`caveman`)
 - **For Claude Code or compatible agents:**
   Load the skill directly in your workspace:
   ```bash
