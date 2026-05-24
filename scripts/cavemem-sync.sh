@@ -135,7 +135,7 @@ show_status() {
     if [ -f "$LOCAL_DB" ]; then
         LOCAL_TIME=$(stat -c %Y "$LOCAL_DB")
         LOCAL_SIZE=$(stat -c %s "$LOCAL_DB")
-        log_info "Local DB: \$(date -d @"$LOCAL_TIME") ($LOCAL_SIZE bytes)"
+        log_info "Local DB: $(date -d @"$LOCAL_TIME") ($LOCAL_SIZE bytes)"
     else
         log_warn "Local DB file does not exist yet."
         LOCAL_TIME=0
@@ -147,7 +147,7 @@ show_status() {
     REMOTE_SIZE=$(echo "$REMOTE_STAT" | cut -d' ' -f2)
     
     if [ "$REMOTE_TIME" -gt 0 ]; then
-        log_info "Remote DB: \$(date -d @"$REMOTE_TIME") ($REMOTE_SIZE bytes)"
+        log_info "Remote DB: $(date -d @"$REMOTE_TIME") ($REMOTE_SIZE bytes)"
     else
         log_warn "Remote DB file does not exist yet."
     fi
@@ -155,9 +155,9 @@ show_status() {
     if [ "$LOCAL_TIME" -eq 0 ] && [ "$REMOTE_TIME" -eq 0 ]; then
         log_warn "No database found on either host."
     elif [ "$LOCAL_TIME" -gt "$REMOTE_TIME" ]; then
-        log_success "Local database is NEWER than remote (by \$((LOCAL_TIME - REMOTE_TIME)) seconds). You should PUSH."
+        log_success "Local database is NEWER than remote (by $((LOCAL_TIME - REMOTE_TIME)) seconds). You should PUSH."
     elif [ "$REMOTE_TIME" -gt "$LOCAL_TIME" ]; then
-        log_warn "Remote database is NEWER than local (by \$((REMOTE_TIME - LOCAL_TIME)) seconds). You should PULL."
+        log_warn "Remote database is NEWER than local (by $((REMOTE_TIME - LOCAL_TIME)) seconds). You should PULL."
     else
         log_success "Databases are perfectly in sync."
     fi
