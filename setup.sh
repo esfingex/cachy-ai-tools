@@ -88,6 +88,51 @@ else
     log_warn "'cavemem' command is not immediately visible in user PATH. You may need to reopen your terminal."
 fi
 
+# 4. Integrate cavemem as an MCP server for the IDE
+log_info "Configuring cavemem as an MCP server for Antigravity IDE..."
+MCP_DIR="${TARGET_HOME}/.gemini/config"
+MCP_CONFIG="${MCP_DIR}/mcp_config.json"
+
+# Create directory if it doesn't exist
+mkdir -p "$MCP_DIR"
+chown -R "${TARGET_USER}:${TARGET_USER}" "$MCP_DIR"
+
+if [ ! -f "$MCP_CONFIG" ] || [ ! -s "$MCP_CONFIG" ]; then
+    # Create a fresh config if missing or empty
+    log_info "Creating new mcp_config.json..."
+    echo '{"mcpServers": {"cavemem": {"command": "/usr/bin/cavemem", "args": ["mcp"]}}}' > "$MCP_CONFIG"
+else
+    # Update existing config using Node since it is guaranteed to be installed
+    log_info "Updating existing mcp_config.json..."
+    node -e '
+        const fs = require("fs");
+        const file = process.argv[1];
+        let data = {};
+        try { data = JSON.parse(fs.readFileSync(file, "utf8")); } catch(e) {}
+        data.mcpServers = data.mcpServers || {};
+        if (!data.mcpServers.cavemem) {
+            data.mcpServers.cavemem = { command: "/usr/bin/cavemem", args: ["mcp"] };
+            fs.writeFileSync(file, JSON.stringify(data, null, 2), "utf8");
+        }
+    ' "$MCP_CONFIG"
+fi
+chown "${TARGET_USER}:${TARGET_USER}" "$MCP_CONFIG"
+log_success "MCP configuration verified at ${MCP_CONFIG}."
+
+# 5. Install caveman skills exclusively for the antigravity agent
+log_info "Installing caveman skills exclusively for the Antigravity agent..."
+if command -v npx &>/dev/null; then
+    # Global installation
+    log_info "Installing global caveman skills..."
+    sudo -u "$TARGET_USER" npx -y skills add JuliusBrussee/caveman -g --agent antigravity -y || log_warn "Could not install global caveman skills."
+    
+    # Local installation
+    SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+    log_info "Installing project-level caveman skills in ${SCRIPT_DIR}..."
+    cd "$SCRIPT_DIR"
+    sudo -u "$TARGET_USER" npx -y skills add JuliusBrussee/caveman --agent antigravity -y || log_warn "Could not install local caveman skills."
+fi
+
 log_success "Ecosystem setup completed successfully!"
 
 # Output helper instructions
