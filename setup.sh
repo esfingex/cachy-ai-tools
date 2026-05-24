@@ -71,12 +71,12 @@ else
     fi
 fi
 
-# 2. Install cavemem globally
-log_info "Installing 'cavemem' globally via npm..."
-if npm install -g cavemem; then
-    log_success "Successfully installed 'cavemem' globally."
+# 2. Install cavemem and local search dependencies globally
+log_info "Installing 'cavemem' and local semantic search engine (@xenova/transformers) globally via npm..."
+if npm install -g cavemem @xenova/transformers; then
+    log_success "Successfully installed 'cavemem' and '@xenova/transformers' globally."
 else
-    log_error "Failed to install 'cavemem' global package."
+    log_error "Failed to install global packages."
     exit 1
 fi
 
