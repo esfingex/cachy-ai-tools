@@ -105,8 +105,14 @@ sync_pull() {
     check_connection
     stop_workers
     
+    # Force WAL checkpoint on remote before pulling so data.db is complete
+    log_info "Checkpointing remote database..."
+    ssh -p "$REMOTE_PORT" "${REMOTE_USER}@${REMOTE_HOST}" "sqlite3 .cavemem/data.db 'PRAGMA wal_checkpoint(TRUNCATE);'" >/dev/null 2>&1 || true
+    
     log_info "Pulling remote database from ${REMOTE_HOST}..."
     if rsync -avz -e "ssh -p $REMOTE_PORT" "${REMOTE_USER}@${REMOTE_HOST}:.cavemem/data.db" "$LOCAL_DB"; then
+        # Force local WAL checkpoint after pull
+        sqlite3 "$LOCAL_DB" 'PRAGMA wal_checkpoint(TRUNCATE);' >/dev/null 2>&1 || true
         log_success "Database successfully pulled from remote host."
     else
         log_error "Failed to pull database."
@@ -119,9 +125,13 @@ sync_push() {
     check_connection
     stop_workers
     
+    # Force local WAL checkpoint so data.db is complete before pushing
+    log_info "Checkpointing local database..."
+    sqlite3 "$LOCAL_DB" 'PRAGMA wal_checkpoint(TRUNCATE);' >/dev/null 2>&1 || true
+    
     log_info "Pushing local database to ${REMOTE_HOST}..."
-    # Ensure remote directory exists
-    ssh -p "$REMOTE_PORT" "${REMOTE_USER}@${REMOTE_HOST}" "mkdir -p .cavemem"
+    # Ensure remote directory exists and clean remote WAL files
+    ssh -p "$REMOTE_PORT" "${REMOTE_USER}@${REMOTE_HOST}" "mkdir -p .cavemem && rm -f .cavemem/data.db-wal .cavemem/data.db-shm"
     
     if rsync -avz -e "ssh -p $REMOTE_PORT" "$LOCAL_DB" "${REMOTE_USER}@${REMOTE_HOST}:.cavemem/data.db"; then
         log_success "Database successfully pushed to remote host."
