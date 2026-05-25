@@ -36,15 +36,15 @@ log_info "Initializing Cachy AI Tools ecosystem for user '${TARGET_USER}'..."
 if command -v node &>/dev/null && command -v npm &>/dev/null; then
     NODE_VERSION_STR=$(node -v)
     NODE_MAJOR=$(echo "$NODE_VERSION_STR" | sed 's/v//' | cut -d. -f1 || echo "0")
-    
+
     if [ "$NODE_MAJOR" -ge 25 ]; then
         log_warn "Your NodeJS version ($NODE_VERSION_STR) is >= v25. Native SQLite3 bindings do not support Node v25+."
         log_info "Switching to NodeJS stable LTS (nodejs-lts-jod, v22) to avoid addon compilation errors..."
-        
+
         # Remove conflicting package explicitly to prevent pacman aborting on --noconfirm defaults
         log_info "Removing conflicting standard nodejs package..."
         pacman -Rdd --noconfirm nodejs || log_warn "Could not remove standard nodejs package safely."
-        
+
         if pacman -S --noconfirm nodejs-lts-jod npm; then
             log_success "Successfully switched to NodeJS LTS (Jod: $(node -v))."
         else
@@ -56,13 +56,13 @@ if command -v node &>/dev/null && command -v npm &>/dev/null; then
     fi
 else
     log_info "NodeJS or NPM not fully found. Bootstrapping stable LTS via pacman..."
-    
+
     # Check if standard nodejs is installed and conflicts
     if pacman -Q nodejs &>/dev/null && ! pacman -Q nodejs-lts-jod &>/dev/null; then
         log_info "Removing conflicting standard nodejs package before LTS install..."
         pacman -Rdd --noconfirm nodejs || log_warn "Could not remove standard nodejs package safely."
     fi
-    
+
     if pacman -S --noconfirm nodejs-lts-jod npm; then
         log_success "Successfully installed NodeJS LTS and NPM."
     else
@@ -100,24 +100,23 @@ chown -R "${TARGET_USER}:${TARGET_USER}" "$MCP_DIR"
 if [ ! -f "$MCP_CONFIG" ] || [ ! -s "$MCP_CONFIG" ]; then
     # Create a fresh config if missing or empty
     log_info "Creating new mcp_config.json..."
-    echo '{"mcpServers": {"cavemem": {"command": "/usr/bin/cavemem", "args": ["mcp"]}}}' > "$MCP_CONFIG"
+    echo "{\"mcpServers\": {\"cavemem\": {\"command\": \"${TARGET_HOME}/.cavemem/cavemem-wrapper.sh\", \"args\": [\"mcp\"]}}}" > "$MCP_CONFIG"
 else
-    # Update existing config using Node since it is guaranteed to be installed
+    # Update existing config to use our project-isolated wrapper
     log_info "Updating existing mcp_config.json..."
     node -e '
         const fs = require("fs");
         const file = process.argv[1];
+        const targetHome = process.argv[2];
         let data = {};
         try { data = JSON.parse(fs.readFileSync(file, "utf8")); } catch(e) {}
         data.mcpServers = data.mcpServers || {};
-        if (!data.mcpServers.cavemem) {
-            data.mcpServers.cavemem = { command: "/usr/bin/cavemem", args: ["mcp"] };
-            fs.writeFileSync(file, JSON.stringify(data, null, 2), "utf8");
-        }
-    ' "$MCP_CONFIG"
+        data.mcpServers.cavemem = { command: `${targetHome}/.cavemem/cavemem-wrapper.sh`, args: ["mcp"] };
+        fs.writeFileSync(file, JSON.stringify(data, null, 2), "utf8");
+    ' "$MCP_CONFIG" "$TARGET_HOME"
 fi
 chown "${TARGET_USER}:${TARGET_USER}" "$MCP_CONFIG"
-log_success "MCP configuration verified at ${MCP_CONFIG}."
+log_success "MCP configuration verified to use project-isolated wrapper at ${MCP_CONFIG}."
 
 # 5. Install caveman skills exclusively for the antigravity agent
 log_info "Installing caveman skills exclusively for the Antigravity agent..."
@@ -132,7 +131,7 @@ log_success "Ecosystem setup completed successfully!"
 # Output helper instructions
 echo -e "\n${YELLOW}🛸 Next Steps & Usage Reference:${RESET}"
 echo -e "  - ${CYAN}cavemem status${RESET}                  : Verify database and session status"
-echo -e "  - ${CYAN}cavemem viewer${RESET}                  : Launch local web UI at http://127.0.0.1:37777"
+echo -e "  - ${CYAN}cavemem viewer${RESET}                  : Launch local web UI at http://127.0.0.1:37778"
 echo -e "  - ${CYAN}npx skills add JuliusBrussee/caveman${RESET} : Add the token compressor skill to your local agent"
-echo -e "  - ${CYAN}cachy-ai-tools/prompts/ai-rules.md${RESET} : Use our pre-configured system prompt template"
+echo -e "  - ${CYAN}cachy-ai-tools/prompts/ai-rules.md${RESET} : Use our pre-con/configured system prompt template"
 echo -e "${YELLOW}Note: If you get a 'command not found' for cavemem immediately after install, please restart your terminal shell window.${RESET}\n"
