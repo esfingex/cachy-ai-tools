@@ -178,6 +178,19 @@ Plus the rules in [`prompts/ai-rules.md`](prompts/ai-rules.md) for your agent's 
 
 ---
 
+## 🤖 AI Assistant Integration (.cursorrules / .clinerules)
+
+To enable any modern AI coding assistant (such as **Cursor Agent**, **Cline**, **Roo-Code**, or **Windsurf**) to automatically search and feed your CaveMem stack in your Linux workspace, follow these steps:
+
+1. Locate the **`.cursorrules.template`** file in the root of this `cachy-ai-tools` folder.
+2. Copy this file into your active development project's root folder (e.g. `~/Github/my-project`).
+3. Rename the file to:
+   * **`.cursorrules`** if you are using Cursor.
+   * **`.clinerules`** if you are using Cline or Roo-Code.
+4. That's it! Your AI assistant will now read these rules automatically at startup, learn that it has the "CaveMem superpower," and query/save project memories autonomously using your global `cavemem` CLI or API endpoints!
+
+---
+
 ## 🔐 Security Defaults
 
 - Server binds `127.0.0.1` only (override with `CAVEMEM_HOST`).

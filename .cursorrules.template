@@ -1,0 +1,55 @@
+# CaveMem (AI Developer Memory Stack) — Agent Instructions
+# Copy this file to your active project root directory as `.cursorrules` or `.clinerules`
+# to automatically enable long-term offline memory capabilities for your AI assistants.
+
+# 🧠 Core Context: Long-Term Memory
+You are working inside a project that is integrated with **CaveMem** (cachy-ai-tools).
+CaveMem is a global, local-first developer memory stack running on the developer's machine at `http://127.0.0.1:3000`.
+It centralizes facts, gotchas, configurations, and project-specific knowledge into local SQLite databases.
+It performs local-first mathematical vector semantic similarity search offline using local CPU embeddings.
+
+---
+
+## 🛠️ Accessing CaveMem (Shell & API)
+You can interact with CaveMem using two main channels:
+
+### 1. The Global CLI Tool (`cavemem`)
+You can execute CLI commands in the workspace terminal. The active project name is automatically derived from the root folder name.
+* **Query Memory (Semantic Search)**:
+  `cavemem query "<search terms or intent>"`
+* **Add Memory Fact**:
+  `cavemem add <category> "<content>" [-t "tag1,tag2"]`
+  *Categories: `gotcha`, `rule`, `flow`, `config`, `dependency`*
+* **List All Memories**:
+  `cavemem list`
+* **Check Status / DB Size**:
+  `cavemem status`
+
+### 2. The Local REST API (`http://127.0.0.1:3000`)
+You can perform background HTTP JSON requests (e.g. using `fetch` or `curl`) to query or write data silently.
+* **Semantic Search**:
+  `GET http://127.0.0.1:3000/api/search?project=<project_name>&q=<search_query>&limit=5`
+* **Add Fact**:
+  `POST http://127.0.0.1:3000/api/memories`
+  *Payload*: `{"project": "...", "category": "...", "content": "...", "tags": "..."}`
+
+---
+
+## 🚦 MANDATORY AGENT WORKFLOW
+
+### Phase 1: Search Before Action
+Before writing code, refactoring, or attempting to fix a bug:
+1. **Query CaveMem**: Check for existing gotchas, rules, or configurations associated with your task.
+2. **Execute**: Run `cavemem query "<task keyword or error message>"` or call the search endpoint.
+3. **Incorporate**: Apply any retrieved knowledge (e.g., specific encoding rules, port numbers, dependencies) immediately into your plan.
+
+### Phase 2: Save on Resolution
+When you successfully solve a critical issue, discover a hidden configuration, or bypass a compiler/runtime bug:
+1. **Formulate Fact**: Write a concise, direct, and actionable description of the problem and the working fix.
+2. **Save Fact**: Execute the CLI command to save it.
+   *Example*: `cavemem add gotcha "Automatic local WAR sanitation in prepare-tomcat.ps1 strips jaybird.jar to avoid Classloader conflicts without touching pom.xml." -t "tomcat,jaybird,classloader"`
+3. **Tag appropriately**: Use relevant tags (e.g. tech-stack, component, error-type).
+
+---
+
+By adhering to this workflow, you ensure that you don't repeat past mistakes and that you help grow a highly customized project intelligence base for the developer!
