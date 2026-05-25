@@ -97,13 +97,61 @@ MCP_CONFIG="${MCP_DIR}/mcp_config.json"
 mkdir -p "$MCP_DIR"
 chown -R "${TARGET_USER}:${TARGET_USER}" "$MCP_DIR"
 
+# Initialize or update existing config using Node for robust JSON handling
 if [ ! -f "$MCP_CONFIG" ] || [ ! -s "$MCP_CONFIG" ]; then
-    # Create a fresh config if missing or empty
     log_info "Creating new mcp_config.json..."
-    echo "{\"mcpServers\": {\"cavemem\": {\"command\": \"${TARGET_HOME}/.cavemem/cavemem-wrapper.sh\", \"args\": [\"mcp\"]}}}" > "$MCP_CONFIG"
+    echo '{"mcpServers": {}}' > "$MCP_CONFIG"
+    chown "${TARGET_USER}:${TARGET_USER}" "$MCP_CONFIG"
+fi
+
+CONFIGURE_GITHUB="n"
+if [ -t 0 ]; then
+    echo -e -n "${YELLOW}[?] Do you want to configure the GitHub MCP Server now? (y/N): ${RESET}"
+    read -r -t 20 RESPONSE || RESPONSE="n"
+    if [[ "$RESPONSE" =~ ^[Yy]$ ]]; then
+        CONFIGURE_GITHUB="y"
+    fi
+fi
+
+if [ "$CONFIGURE_GITHUB" = "y" ]; then
+    echo -n -e "${CYAN}[?] Enter your GitHub Personal Access Token (PAT): ${RESET}"
+    read -s -r GIT_TOKEN
+    echo "" # New line after hidden read
+    
+    if [ -n "$GIT_TOKEN" ]; then
+        node -e '
+            const fs = require("fs");
+            const file = process.argv[1];
+            const targetHome = process.argv[2];
+            const gitToken = process.argv[3];
+            let data = {};
+            try { data = JSON.parse(fs.readFileSync(file, "utf8")); } catch(e) {}
+            data.mcpServers = data.mcpServers || {};
+            data.mcpServers.cavemem = { command: `${targetHome}/.cavemem/cavemem-wrapper.sh`, args: ["mcp"] };
+            data.mcpServers["github-mcp-server"] = {
+                command: "npx",
+                args: ["-y", "@modelcontextprotocol/server-github"],
+                env: { GITHUB_PERSONAL_ACCESS_TOKEN: gitToken }
+            };
+            fs.writeFileSync(file, JSON.stringify(data, null, 2), "utf8");
+        ' "$MCP_CONFIG" "$TARGET_HOME" "$GIT_TOKEN"
+        log_success "GitHub MCP Server successfully integrated and configured!"
+    else
+        log_warn "GitHub token was empty. Skipping GitHub MCP configuration."
+        # Fallback to only updating cavemem
+        node -e '
+            const fs = require("fs");
+            const file = process.argv[1];
+            const targetHome = process.argv[2];
+            let data = {};
+            try { data = JSON.parse(fs.readFileSync(file, "utf8")); } catch(e) {}
+            data.mcpServers = data.mcpServers || {};
+            data.mcpServers.cavemem = { command: `${targetHome}/.cavemem/cavemem-wrapper.sh`, args: ["mcp"] };
+            fs.writeFileSync(file, JSON.stringify(data, null, 2), "utf8");
+        ' "$MCP_CONFIG" "$TARGET_HOME"
+    fi
 else
-    # Update existing config to use our project-isolated wrapper
-    log_info "Updating existing mcp_config.json..."
+    # Keep any existing GitHub configuration if it is already present, but ensure cavemem is updated
     node -e '
         const fs = require("fs");
         const file = process.argv[1];
