@@ -1,0 +1,1174 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CaveMem — Panel de Control de Memoria IA</title>
+  <!-- Google Fonts Outfit & Inter -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  
+  <style>
+    :root {
+      --bg-base: #0b0f19;
+      --bg-card: rgba(20, 26, 43, 0.6);
+      --bg-card-hover: rgba(28, 37, 61, 0.8);
+      --border-color: rgba(255, 255, 255, 0.08);
+      --border-glow: rgba(99, 102, 241, 0.3);
+      
+      --accent-primary: #6366f1; /* Indigo */
+      --accent-secondary: #8b5cf6; /* Violet */
+      --accent-glow: linear-gradient(135deg, #6366f1, #8b5cf6);
+      
+      --text-main: #f3f4f6;
+      --text-muted: #9ca3af;
+      --text-dark: #4b5563;
+
+      /* Categories Colors */
+      --cat-gotcha: #f59e0b;
+      --cat-rule: #ec4899;
+      --cat-flow: #10b981;
+      --cat-config: #3b82f6;
+      --cat-dependency: #a855f7;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      scrollbar-width: thin;
+      scrollbar-color: rgba(255, 255, 255, 0.1) transparent;
+    }
+
+    /* Scrollbars */
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: transparent;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: rgba(255, 255, 255, 0.15);
+      border-radius: 4px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: var(--accent-primary);
+    }
+
+    body {
+      background-color: var(--bg-base);
+      color: var(--text-main);
+      font-family: 'Inter', sans-serif;
+      min-height: 100vh;
+      overflow-x: hidden;
+      position: relative;
+    }
+
+    /* Animated background glow circles */
+    body::before {
+      content: '';
+      position: absolute;
+      width: 500px;
+      height: 500px;
+      background: radial-gradient(circle, rgba(99, 102, 241, 0.15) 0%, rgba(0,0,0,0) 70%);
+      top: -150px;
+      right: -100px;
+      z-index: -1;
+    }
+    body::after {
+      content: '';
+      position: absolute;
+      width: 600px;
+      height: 600px;
+      background: radial-gradient(circle, rgba(139, 92, 246, 0.1) 0%, rgba(0,0,0,0) 70%);
+      bottom: -150px;
+      left: -150px;
+      z-index: -1;
+    }
+
+    .container {
+      max-width: 1400px;
+      margin: 0 auto;
+      padding: 2.5rem 1.5rem;
+    }
+
+    /* Header styling */
+    header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 3rem;
+      border-bottom: 1px solid var(--border-color);
+      padding-bottom: 1.5rem;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+
+    .brand-logo {
+      width: 45px;
+      height: 45px;
+      background: var(--accent-glow);
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: 'Outfit', sans-serif;
+      font-weight: 800;
+      font-size: 1.4rem;
+      color: #fff;
+      box-shadow: 0 0 20px rgba(99, 102, 241, 0.4);
+    }
+
+    .brand-title {
+      font-family: 'Outfit', sans-serif;
+      font-weight: 700;
+      font-size: 1.8rem;
+      background: linear-gradient(to right, #ffffff, #c7d2fe);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .brand-subtitle {
+      font-size: 0.85rem;
+      color: var(--text-muted);
+      margin-top: 2px;
+    }
+
+    /* Selector de proyecto */
+    .project-selector {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid var(--border-color);
+      padding: 0.5rem 1rem;
+      border-radius: 12px;
+      backdrop-filter: blur(12px);
+    }
+
+    .project-selector label {
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .project-selector select {
+      background: #0f1424;
+      color: var(--text-main);
+      border: 1px solid var(--border-color);
+      padding: 0.4rem 1.5rem 0.4rem 0.75rem;
+      border-radius: 8px;
+      font-family: inherit;
+      font-size: 0.95rem;
+      font-weight: 500;
+      cursor: pointer;
+      outline: none;
+      transition: all 0.3s ease;
+    }
+
+    .project-selector select:focus {
+      border-color: var(--accent-primary);
+      box-shadow: 0 0 10px rgba(99, 102, 241, 0.25);
+    }
+
+    /* Layout principal */
+    .dashboard-grid {
+      display: grid;
+      grid-template-columns: 360px 1fr;
+      gap: 2rem;
+      align-items: start;
+    }
+
+    @media (max-width: 1024px) {
+      .dashboard-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    /* Paneles / Tarjetas */
+    .panel {
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 20px;
+      padding: 1.75rem;
+      backdrop-filter: blur(16px);
+      box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+      transition: border-color 0.3s ease;
+    }
+
+    .panel:hover {
+      border-color: rgba(255, 255, 255, 0.12);
+    }
+
+    .panel-title {
+      font-family: 'Outfit', sans-serif;
+      font-weight: 600;
+      font-size: 1.25rem;
+      margin-bottom: 1.5rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      color: #fff;
+    }
+
+    /* Formularios */
+    .form-group {
+      margin-bottom: 1.25rem;
+    }
+
+    .form-group label {
+      display: block;
+      font-size: 0.85rem;
+      color: var(--text-muted);
+      margin-bottom: 0.5rem;
+      font-weight: 500;
+    }
+
+    .form-input, .form-textarea, .form-select {
+      width: 100%;
+      background: rgba(10, 15, 30, 0.8);
+      border: 1px solid var(--border-color);
+      border-radius: 10px;
+      color: var(--text-main);
+      padding: 0.75rem;
+      font-family: inherit;
+      font-size: 0.95rem;
+      outline: none;
+      transition: all 0.3s ease;
+    }
+
+    .form-input:focus, .form-textarea:focus, .form-select:focus {
+      border-color: var(--accent-primary);
+      box-shadow: 0 0 10px rgba(99, 102, 241, 0.15);
+      background: rgba(15, 20, 40, 0.9);
+    }
+
+    .form-textarea {
+      resize: vertical;
+      min-height: 120px;
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.5rem;
+      width: 100%;
+      background: var(--accent-glow);
+      color: #fff;
+      border: none;
+      padding: 0.8rem 1.5rem;
+      border-radius: 10px;
+      font-family: 'Outfit', sans-serif;
+      font-weight: 600;
+      font-size: 1rem;
+      cursor: pointer;
+      box-shadow: 0 4px 15px rgba(99, 102, 241, 0.2);
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    .btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(99, 102, 241, 0.4);
+    }
+
+    .btn:active {
+      transform: translateY(0);
+    }
+
+    /* Stats Panel */
+    .stats-card {
+      margin-top: 1.5rem;
+      background: rgba(255, 255, 255, 0.02);
+      border: 1px solid rgba(255, 255, 255, 0.04);
+      border-radius: 12px;
+      padding: 1.25rem;
+    }
+
+    .stat-row {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 0.75rem;
+      font-size: 0.9rem;
+    }
+
+    .stat-row:last-child {
+      margin-bottom: 0;
+    }
+
+    .stat-label {
+      color: var(--text-muted);
+    }
+
+    .stat-val {
+      font-weight: 600;
+      color: #fff;
+    }
+
+    /* Main memory panel */
+    .search-bar {
+      display: flex;
+      gap: 0.75rem;
+      margin-bottom: 2rem;
+    }
+
+    .search-input-wrapper {
+      position: relative;
+      flex: 1;
+    }
+
+    .search-input {
+      width: 100%;
+      padding-left: 2.75rem;
+    }
+
+    .search-icon {
+      position: absolute;
+      left: 1rem;
+      top: 50%;
+      transform: translateY(-50%);
+      color: var(--text-muted);
+      pointer-events: none;
+    }
+
+    /* Grid de memorias */
+    .memory-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+      gap: 1.5rem;
+    }
+
+    .memory-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 16px;
+      padding: 1.5rem;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      gap: 1rem;
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .memory-card::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 4px;
+      height: 100%;
+      background: var(--accent-primary);
+      opacity: 0.7;
+    }
+
+    /* Custom category borders/glows */
+    .memory-card.cat-gotcha::before { background: var(--cat-gotcha); }
+    .memory-card.cat-rule::before { background: var(--cat-rule); }
+    .memory-card.cat-flow::before { background: var(--cat-flow); }
+    .memory-card.cat-config::before { background: var(--cat-config); }
+    .memory-card.cat-dependency::before { background: var(--cat-dependency); }
+
+    .memory-card:hover {
+      background: var(--bg-card-hover);
+      border-color: rgba(255, 255, 255, 0.15);
+      transform: translateY(-4px);
+      box-shadow: 0 12px 24px rgba(0, 0, 0, 0.25);
+    }
+
+    .memory-meta {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .badge {
+      font-size: 0.75rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      padding: 0.25rem 0.6rem;
+      border-radius: 6px;
+      display: inline-block;
+    }
+
+    .badge-gotcha { background: rgba(245, 158, 11, 0.15); color: var(--cat-gotcha); border: 1px solid rgba(245, 158, 11, 0.3); }
+    .badge-rule { background: rgba(236, 72, 153, 0.15); color: var(--cat-rule); border: 1px solid rgba(236, 72, 153, 0.3); }
+    .badge-flow { background: rgba(16, 185, 129, 0.15); color: var(--cat-flow); border: 1px solid rgba(16, 185, 129, 0.3); }
+    .badge-config { background: rgba(59, 130, 246, 0.15); color: var(--cat-config); border: 1px solid rgba(59, 130, 246, 0.3); }
+    .badge-dependency { background: rgba(168, 85, 247, 0.15); color: var(--cat-dependency); border: 1px solid rgba(168, 85, 247, 0.3); }
+
+    .score-indicator {
+      font-family: 'Outfit', sans-serif;
+      font-size: 0.8rem;
+      font-weight: 700;
+      color: #10b981;
+      background: rgba(16, 185, 129, 0.1);
+      padding: 0.2rem 0.5rem;
+      border-radius: 6px;
+      display: flex;
+      align-items: center;
+      gap: 0.25rem;
+    }
+
+    .memory-content {
+      font-size: 0.95rem;
+      line-height: 1.6;
+      color: var(--text-main);
+      white-space: pre-wrap;
+      word-break: break-word;
+      flex-grow: 1;
+    }
+
+    .memory-footer {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-top: 0.5rem;
+      padding-top: 0.75rem;
+      border-top: 1px solid rgba(255, 255, 255, 0.05);
+    }
+
+    .memory-date {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+    }
+
+    .tags-container {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.35rem;
+    }
+
+    .tag-pill {
+      font-size: 0.7rem;
+      background: rgba(255, 255, 255, 0.05);
+      color: var(--text-muted);
+      padding: 0.15rem 0.4rem;
+      border-radius: 4px;
+      border: 1px solid rgba(255, 255, 255, 0.04);
+    }
+
+    .delete-btn {
+      background: transparent;
+      border: none;
+      color: var(--text-dark);
+      cursor: pointer;
+      padding: 0.3rem;
+      border-radius: 6px;
+      transition: all 0.2s ease;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .delete-btn:hover {
+      color: #ef4444;
+      background: rgba(239, 68, 68, 0.15);
+    }
+
+    .empty-state {
+      grid-column: 1 / -1;
+      text-align: center;
+      padding: 4rem 2rem;
+      background: var(--bg-card);
+      border: 1px dashed var(--border-color);
+      border-radius: 20px;
+      color: var(--text-muted);
+    }
+
+    .empty-state svg {
+      width: 48px;
+      height: 48px;
+      margin-bottom: 1rem;
+      color: var(--text-dark);
+    }
+
+    /* Modal loading state for model warm-up */
+    .loading-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(7, 10, 20, 0.85);
+      backdrop-filter: blur(8px);
+      z-index: 9999;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      flex-direction: column;
+      gap: 1.5rem;
+    }
+
+    .spinner {
+      width: 50px;
+      height: 50px;
+      border: 4px solid rgba(99, 102, 241, 0.1);
+      border-left-color: var(--accent-primary);
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    .loading-text {
+      font-family: 'Outfit', sans-serif;
+      font-size: 1.2rem;
+      font-weight: 500;
+      color: #fff;
+    }
+
+    /* Edit button (same family as delete-btn) */
+    .edit-btn {
+      background: transparent;
+      border: none;
+      color: var(--text-dark);
+      cursor: pointer;
+      padding: 0.3rem;
+      border-radius: 6px;
+      transition: all 0.2s ease;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .edit-btn:hover {
+      color: var(--accent-primary);
+      background: rgba(99, 102, 241, 0.15);
+    }
+
+    /* Edit modal */
+    .modal-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(7, 10, 20, 0.78);
+      backdrop-filter: blur(10px);
+      z-index: 9998;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 1.5rem;
+    }
+    .modal-overlay.active { display: flex; }
+    .modal-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 20px;
+      padding: 2rem;
+      max-width: 600px;
+      width: 100%;
+      max-height: 90vh;
+      overflow-y: auto;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+    }
+    .modal-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 1.5rem;
+    }
+    .modal-title {
+      font-family: 'Outfit', sans-serif;
+      font-weight: 600;
+      font-size: 1.3rem;
+      color: #fff;
+    }
+    .modal-close {
+      background: transparent;
+      border: none;
+      color: var(--text-muted);
+      cursor: pointer;
+      font-size: 1.5rem;
+      line-height: 1;
+      padding: 0.25rem 0.5rem;
+      border-radius: 6px;
+    }
+    .modal-close:hover { color: #fff; background: rgba(255,255,255,0.05); }
+    .modal-actions {
+      display: flex;
+      gap: 0.75rem;
+      margin-top: 1.25rem;
+    }
+    .btn-secondary {
+      background: rgba(255,255,255,0.05);
+      box-shadow: none;
+    }
+    .btn-secondary:hover {
+      background: rgba(255,255,255,0.1);
+      box-shadow: none;
+    }
+
+    /* Paginator */
+    .paginator {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+      margin-top: 2rem;
+      padding-top: 1.5rem;
+      border-top: 1px solid var(--border-color);
+      flex-wrap: wrap;
+    }
+    .paginator-info {
+      font-size: 0.85rem;
+      color: var(--text-muted);
+    }
+    .paginator-controls {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    .pg-btn {
+      background: rgba(255,255,255,0.05);
+      border: 1px solid var(--border-color);
+      color: var(--text-main);
+      padding: 0.4rem 0.85rem;
+      border-radius: 8px;
+      cursor: pointer;
+      font-family: inherit;
+      font-size: 0.85rem;
+      font-weight: 500;
+      transition: all 0.2s ease;
+    }
+    .pg-btn:hover:not(:disabled) {
+      border-color: var(--accent-primary);
+      background: rgba(99, 102, 241, 0.1);
+    }
+    .pg-btn:disabled {
+      opacity: 0.35;
+      cursor: not-allowed;
+    }
+    .pg-current {
+      font-family: 'Outfit', sans-serif;
+      font-weight: 600;
+      color: #fff;
+      padding: 0 0.5rem;
+    }
+    .category-filter {
+      background: rgba(255,255,255,0.03);
+      border: 1px solid var(--border-color);
+      color: var(--text-main);
+      padding: 0.4rem 0.75rem;
+      border-radius: 8px;
+      font-family: inherit;
+      font-size: 0.85rem;
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="loading-overlay" id="loadingOverlay">
+    <div class="spinner"></div>
+    <div class="loading-text" id="loadingText">Procesando vectores con transformers.js local...</div>
+  </div>
+
+  <!-- Edit modal -->
+  <div class="modal-overlay" id="editModal" onclick="onModalBackdrop(event)">
+    <div class="modal-card" onclick="event.stopPropagation()">
+      <div class="modal-header">
+        <h2 class="modal-title">Editar Memoria <span style="color:var(--text-muted); font-weight:400;">#<span id="editId"></span></span></h2>
+        <button class="modal-close" onclick="closeEditModal()" title="Cerrar">×</button>
+      </div>
+      <form id="editForm" onsubmit="submitEdit(event)">
+        <div class="form-group">
+          <label for="editCategory">Categoría</label>
+          <select id="editCategory" class="form-select" required>
+            <option value="gotcha">Gotcha / Advertencia</option>
+            <option value="rule">Regla de Código / Directriz</option>
+            <option value="flow">Flujo de Negocio</option>
+            <option value="config">Configuración de Entorno</option>
+            <option value="dependency">Dependencia / Librería</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="editContent">Contenido</label>
+          <textarea id="editContent" class="form-textarea" required></textarea>
+        </div>
+        <div class="form-group">
+          <label for="editTags">Tags (separados por coma)</label>
+          <input type="text" id="editTags" class="form-input">
+        </div>
+        <div class="modal-actions">
+          <button type="button" class="btn btn-secondary" onclick="closeEditModal()">Cancelar</button>
+          <button type="submit" class="btn">Guardar Cambios</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <div class="container">
+    <header>
+      <div class="brand">
+        <div class="brand-logo">C</div>
+        <div>
+          <h1 class="brand-title">CaveMem</h1>
+          <div class="brand-subtitle">Stack de Memoria e Inteligencia Global · Cross-Platform</div>
+        </div>
+      </div>
+      
+      <div class="project-selector">
+        <label for="projectSelect">Proyecto Activo:</label>
+        <select id="projectSelect" onchange="switchProject(this.value)">
+          <% projects.forEach(p => { %>
+            <option value="<%= p %>" <%= currentProject === p ? 'selected' : '' %>><%= p %></option>
+          <% }) %>
+          <% if (!projects.includes(currentProject)) { %>
+            <option value="<%= currentProject %>" selected><%= currentProject %></option>
+          <% } %>
+        </select>
+      </div>
+    </header>
+
+    <div class="dashboard-grid">
+      <!-- Panel de Control Lateral -->
+      <aside style="display: flex; flex-direction: column; gap: 1.5rem;">
+        <!-- Agregar Hecho -->
+        <section class="panel">
+          <h2 class="panel-title">
+            <svg style="width: 20px; height: 20px;" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v3m0 0v3m0-3h3m-3 0H9m12 0a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+            </svg>
+            Registrar Memoria
+          </h2>
+          
+          <form id="addMemoryForm" onsubmit="submitMemory(event)">
+            <div class="form-group">
+              <label for="category">Categoría</label>
+              <select id="category" class="form-select" required>
+                <option value="gotcha">Gotcha / Advertencia</option>
+                <option value="rule">Regla de Código / Directriz</option>
+                <option value="flow">Flujo de Negocio</option>
+                <option value="config">Configuración de Entorno</option>
+                <option value="dependency">Dependencia / Librería</option>
+              </select>
+            </div>
+            
+            <div class="form-group">
+              <label for="content">Contenido del Hecho / Memoria</label>
+              <textarea id="content" class="form-textarea" placeholder="Ej: Firebird requiere encode ISO8859_1 en el string de conexión JNDI, de lo contrario fallan acentos..." required></textarea>
+            </div>
+            
+            <div class="form-group">
+              <label for="tags">Tags (separados por coma)</label>
+              <input type="text" id="tags" class="form-input" placeholder="firebird, connection, encoding">
+            </div>
+            
+            <button type="submit" class="btn">
+              Añadir Hecho
+            </button>
+          </form>
+        </section>
+
+        <!-- Estadísticas base -->
+        <section class="panel">
+          <h2 class="panel-title">
+            <svg style="width: 20px; height: 20px;" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
+            </svg>
+            Estadísticas
+          </h2>
+          
+          <div class="stats-card">
+            <div class="stat-row">
+              <span class="stat-label">Total Memorias:</span>
+              <span class="stat-val" id="statCount"><%= stats.count %></span>
+            </div>
+            <div class="stat-row">
+              <span class="stat-label">Tamaño de BD:</span>
+              <span class="stat-val" id="statSize"><%= (stats.sizeBytes / 1024).toFixed(1) %> KB</span>
+            </div>
+          </div>
+          
+          <div class="stats-card" style="margin-top: 1rem;">
+            <div style="font-size: 0.85rem; font-weight: 600; color: var(--text-muted); margin-bottom: 0.5rem; text-transform: uppercase;">Por Categoría:</div>
+            <div id="statCategories">
+              <% Object.entries(stats.categories).forEach(([cat, count]) => { %>
+                <div class="stat-row">
+                  <span class="stat-label" style="text-transform: capitalize;"><%= cat %>:</span>
+                  <span class="stat-val"><%= count %></span>
+                </div>
+              <% }) %>
+              <% if (Object.keys(stats.categories).length === 0) { %>
+                <div style="font-size: 0.85rem; color: var(--text-dark);">Sin datos registrados.</div>
+              <% } %>
+            </div>
+          </div>
+        </section>
+      </aside>
+
+      <!-- Panel de Visualización e Historial -->
+      <main class="panel" style="flex: 1;">
+        <!-- Barra de búsqueda -->
+        <div class="search-bar">
+          <div class="search-input-wrapper">
+            <svg class="search-icon" style="width: 20px; height: 20px;" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+            </svg>
+            <input type="text" id="searchInput" class="form-input search-input" placeholder="Realizar búsqueda matemática semántica vectorial (Xenova local)..." onkeydown="handleSearchKey(event)">
+          </div>
+          <button onclick="performSearch()" class="btn" style="width: auto; padding: 0 1.5rem;">
+            Buscar
+          </button>
+          <button onclick="clearSearch()" id="clearBtn" class="btn" style="width: auto; padding: 0 1.25rem; background: rgba(255, 255, 255, 0.05); display: none;">
+            Limpiar
+          </button>
+        </div>
+
+        <!-- Resultados de Búsqueda / Listado -->
+        <h2 class="panel-title" style="margin-bottom: 1.5rem;" id="listTitle">
+          Hechos Guardados
+        </h2>
+
+        <div class="memory-grid" id="memoryGrid">
+          <% if (memories.length === 0) { %>
+            <div class="empty-state">
+              <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M20.25 7.5l-.625 10.632a2.25 2.25 0 01-2.247 2.118H6.622a2.25 2.25 0 01-2.247-2.118L3.75 7.5M10 11.25h4M3.375 7.5h17.25c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125z"></path>
+              </svg>
+              <h3>No hay memorias registradas</h3>
+              <p style="font-size: 0.9rem; margin-top: 0.5rem;">Añade tu primer hecho usando el formulario lateral o el CLI `cavemem`.</p>
+            </div>
+          <% } else { %>
+            <% memories.forEach(m => { %>
+              <div class="memory-card cat-<%= m.category %>" id="mem-<%= m.id %>">
+                <div class="memory-meta">
+                  <span class="badge badge-<%= m.category %>"><%= m.category %></span>
+                  <% if (m.score !== undefined) { %>
+                    <span class="score-indicator">
+                      <svg style="width: 12px; height: 12px;" fill="currentColor" viewBox="0 0 20 20">
+                        <path fill-rule="evenodd" d="M12.395 2.553a1 1 0 00-1.45-.385c-.345.23-.614.558-.822.88-.214.33-.403.713-.57 1.116-.334.804-.614 1.768-.84 2.734a31.365 31.365 0 00-.462 2.485H5a2 2 0 00-2 2v2a2 2 0 002 2h3.69l-.783 2.355a1 1 0 00.958 1.318h1.222a1 1 0 00.923-.618l2.624-5.832a2 2 0 00.178-.826V5.74a2 2 0 00-.73-1.536l-1.077-.852zM16 8a2 2 0 114 0v4a2 2 0 11-4 0V8z" clip-rule="evenodd"></path>
+                      </svg>
+                      <%= Math.round(m.score * 100) %>%
+                    </span>
+                  <% } %>
+                </div>
+                <div class="memory-content"><%= m.content %></div>
+                <div class="memory-footer">
+                  <div class="tags-container">
+                    <% m.tags.forEach(tag => { %>
+                      <% if (tag.trim()) { %>
+                        <span class="tag-pill">#<%= tag.trim() %></span>
+                      <% } %>
+                    <% }) %>
+                  </div>
+                  <div style="display: flex; align-items: center; gap: 0.5rem;">
+                    <span class="memory-date"><%= new Date(m.created_at).toLocaleDateString() %></span>
+                    <button class="edit-btn" onclick="openEditModal(<%= m.id %>)" title="Editar hecho">
+                      <svg style="width: 16px; height: 16px;" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
+                      </svg>
+                    </button>
+                    <button class="delete-btn" onclick="deleteItem(<%= m.id %>)" title="Eliminar hecho">
+                      <svg style="width: 16px; height: 16px;" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+                      </svg>
+                    </button>
+                  </div>
+                </div>
+              </div>
+            <% }) %>
+          <% } %>
+        </div>
+
+        <!-- Paginator + category filter -->
+        <% if (typeof pagination !== 'undefined') { %>
+          <div class="paginator">
+            <div style="display:flex; align-items:center; gap:0.75rem; flex-wrap:wrap;">
+              <span class="paginator-info">
+                <%= pagination.total %> total ·
+                Pág <%= pagination.page %> / <%= pagination.totalPages %>
+              </span>
+              <select class="category-filter" onchange="filterByCategory(this.value)">
+                <option value="" <%= !pagination.category ? 'selected' : '' %>>Todas las categorías</option>
+                <option value="gotcha" <%= pagination.category === 'gotcha' ? 'selected' : '' %>>gotcha</option>
+                <option value="rule" <%= pagination.category === 'rule' ? 'selected' : '' %>>rule</option>
+                <option value="flow" <%= pagination.category === 'flow' ? 'selected' : '' %>>flow</option>
+                <option value="config" <%= pagination.category === 'config' ? 'selected' : '' %>>config</option>
+                <option value="dependency" <%= pagination.category === 'dependency' ? 'selected' : '' %>>dependency</option>
+              </select>
+            </div>
+            <div class="paginator-controls">
+              <button class="pg-btn" onclick="goToPage(1)" <%= pagination.page <= 1 ? 'disabled' : '' %>>« Primera</button>
+              <button class="pg-btn" onclick="goToPage(<%= pagination.page - 1 %>)" <%= pagination.page <= 1 ? 'disabled' : '' %>>‹ Anterior</button>
+              <span class="pg-current"><%= pagination.page %></span>
+              <button class="pg-btn" onclick="goToPage(<%= pagination.page + 1 %>)" <%= pagination.page >= pagination.totalPages ? 'disabled' : '' %>>Siguiente ›</button>
+              <button class="pg-btn" onclick="goToPage(<%= pagination.totalPages %>)" <%= pagination.page >= pagination.totalPages ? 'disabled' : '' %>>Última »</button>
+            </div>
+          </div>
+        <% } %>
+      </main>
+    </div>
+  </div>
+
+  <script>
+    const currentProject = "<%= currentProject %>";
+    const overlay = document.getElementById('loadingOverlay');
+
+    function escapeHtml(str) {
+      if (str === null || str === undefined) return '';
+      return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+    }
+
+    const ALLOWED_CATEGORIES = ['gotcha','rule','flow','config','dependency'];
+    function safeCategory(cat) {
+      return ALLOWED_CATEGORIES.includes(cat) ? cat : 'gotcha';
+    }
+
+    function showLoading(text) {
+      document.getElementById('loadingText').innerText = text;
+      overlay.style.display = 'flex';
+    }
+
+    function hideLoading() {
+      overlay.style.display = 'none';
+    }
+
+    function switchProject(proj) {
+      window.location.href = `/?project=${encodeURIComponent(proj)}`;
+    }
+
+    function buildUrl(params) {
+      const url = new URL(window.location.href);
+      Object.entries(params).forEach(([k, v]) => {
+        if (v === null || v === undefined || v === '') url.searchParams.delete(k);
+        else url.searchParams.set(k, v);
+      });
+      return url.toString();
+    }
+
+    function goToPage(p) {
+      window.location.href = buildUrl({ page: p });
+    }
+
+    function filterByCategory(cat) {
+      window.location.href = buildUrl({ category: cat || null, page: 1 });
+    }
+
+    // --- Edit Modal ---
+    const editModal = document.getElementById('editModal');
+
+    async function openEditModal(id) {
+      try {
+        const res = await fetch(`/api/memories/${id}?project=${encodeURIComponent(currentProject)}`);
+        if (!res.ok) throw new Error('No se pudo cargar la memoria');
+        const data = await res.json();
+        const m = data.memory;
+        document.getElementById('editId').textContent = m.id;
+        document.getElementById('editCategory').value = safeCategory(m.category);
+        document.getElementById('editContent').value = m.content || '';
+        document.getElementById('editTags').value = (m.tags || []).join(', ');
+        editModal.dataset.id = m.id;
+        editModal.classList.add('active');
+      } catch (err) {
+        alert(err.message);
+      }
+    }
+
+    function closeEditModal() {
+      editModal.classList.remove('active');
+      editModal.dataset.id = '';
+    }
+
+    function onModalBackdrop(e) {
+      if (e.target === editModal) closeEditModal();
+    }
+
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' && editModal.classList.contains('active')) closeEditModal();
+    });
+
+    async function submitEdit(e) {
+      e.preventDefault();
+      const id = editModal.dataset.id;
+      if (!id) return;
+
+      const payload = {
+        project: currentProject,
+        category: document.getElementById('editCategory').value,
+        content: document.getElementById('editContent').value,
+        tags: document.getElementById('editTags').value
+      };
+
+      showLoading('Recalculando embedding y guardando...');
+      try {
+        const res = await fetch(`/api/memories/${id}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+        const data = await res.json();
+        if (!res.ok || !data.success) throw new Error(data.error || 'Fallo al actualizar');
+        closeEditModal();
+        window.location.reload();
+      } catch (err) {
+        alert(err.message);
+        hideLoading();
+      }
+    }
+
+    async function submitMemory(e) {
+      e.preventDefault();
+      const category = document.getElementById('category').value;
+      const content = document.getElementById('content').value;
+      const tags = document.getElementById('tags').value;
+
+      showLoading('Calculando embedding vectorial con Transformers.js local...');
+      
+      try {
+        const res = await fetch('/api/memories', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            project: currentProject,
+            category,
+            content,
+            tags
+          })
+        });
+
+        if (!res.ok) throw new Error('Fallo al guardar la memoria');
+        
+        // Reload page to refresh stats & cards
+        window.location.reload();
+      } catch (err) {
+        alert(err.message);
+        hideLoading();
+      }
+    }
+
+    async function deleteItem(id) {
+      if (!confirm('¿Seguro que deseas eliminar esta memoria?')) return;
+      
+      try {
+        const res = await fetch(`/api/memories/${id}?project=${encodeURIComponent(currentProject)}`, {
+          method: 'DELETE'
+        });
+
+        if (!res.ok) throw new Error('Fallo al eliminar');
+        
+        // Remove from DOM
+        const el = document.getElementById(`mem-${id}`);
+        if (el) el.remove();
+        
+        // Reload page for stats update
+        window.location.reload();
+      } catch (err) {
+        alert(err.message);
+      }
+    }
+
+    function handleSearchKey(e) {
+      if (e.key === 'Enter') {
+        performSearch();
+      }
+    }
+
+    async function performSearch() {
+      const q = document.getElementById('searchInput').value.trim();
+      if (!q) return;
+
+      showLoading('Calculando similitud angular vectorial...');
+      
+      try {
+        const res = await fetch(`/api/search?project=${encodeURIComponent(currentProject)}&q=${encodeURIComponent(q)}&limit=9`);
+        if (!res.ok) throw new Error('Error al buscar');
+        
+        const results = await res.json();
+        renderSearchResults(results, q);
+      } catch (err) {
+        alert(err.message);
+      } finally {
+        hideLoading();
+      }
+    }
+
+    function clearSearch() {
+      document.getElementById('searchInput').value = '';
+      document.getElementById('clearBtn').style.display = 'none';
+      window.location.reload();
+    }
+
+    function renderSearchResults(results, query) {
+      const grid = document.getElementById('memoryGrid');
+      const title = document.getElementById('listTitle');
+      const clearBtn = document.getElementById('clearBtn');
+
+      clearBtn.style.display = 'inline-flex';
+      title.innerHTML = `Resultados de similitud semántica para: <span style="color: var(--accent-primary); font-weight: 700;">"${escapeHtml(query)}"</span>`;
+      
+      if (results.length === 0) {
+        grid.innerHTML = `
+          <div class="empty-state">
+            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
+            </svg>
+            <h3>No se encontraron memorias similares</h3>
+            <p style="font-size: 0.9rem; margin-top: 0.5rem;">Prueba con términos diferentes o registra más hechos en este proyecto.</p>
+          </div>
+        `;
+        return;
+      }
+
+      grid.innerHTML = results.map(m => {
+        const cat = safeCategory(m.category);
+        const catClass = `cat-${cat}`;
+        const badgeClass = `badge-${cat}`;
+        const percent = Math.round(m.score * 100);
+        const id = Number(m.id) || 0;
+        const tagsHtml = (m.tags || []).map(t => {
+          const trimmed = (t || '').trim();
+          return trimmed ? `<span class="tag-pill">#${escapeHtml(trimmed)}</span>` : '';
+        }).join('');
+        const dateStr = escapeHtml(new Date(m.created_at).toLocaleDateString());
+
+        return `
+          <div class="memory-card ${catClass}" id="mem-${id}">
+            <div class="memory-meta">
+              <span class="badge ${badgeClass}">${escapeHtml(cat)}</span>
+              <span class="score-indicator">
+                <svg style="width: 12px; height: 12px;" fill="currentColor" viewBox="0 0 20 20">
+                  <path fill-rule="evenodd" d="M12.395 2.553a1 1 0 00-1.45-.385c-.345.23-.614.558-.822.88-.214.33-.403.713-.57 1.116-.334.804-.614 1.768-.84 2.734a31.365 31.365 0 00-.462 2.485H5a2 2 0 00-2 2v2a2 2 0 002 2h3.69l-.783 2.355a1 1 0 00.958 1.318h1.222a1 1 0 00.923-.618l2.624-5.832a2 2 0 00.178-.826V5.74a2 2 0 00-.73-1.536l-1.077-.852zM16 8a2 2 0 114 0v4a2 2 0 11-4 0V8z" clip-rule="evenodd"></path>
+                </svg>
+                ${percent}% de relevancia
+              </span>
+            </div>
+            <div class="memory-content">${escapeHtml(m.content)}</div>
+            <div class="memory-footer">
+              <div class="tags-container">
+                ${tagsHtml}
+              </div>
+              <div style="display: flex; align-items: center; gap: 0.5rem;">
+                <span class="memory-date">${dateStr}</span>
+                <button class="edit-btn" onclick="openEditModal(${id})" title="Editar hecho">
+                  <svg style="width: 16px; height: 16px;" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
+                  </svg>
+                </button>
+                <button class="delete-btn" onclick="deleteItem(${id})" title="Eliminar hecho">
+                  <svg style="width: 16px; height: 16px;" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+                  </svg>
+                </button>
+              </div>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+  </script>
+</body>
+</html>

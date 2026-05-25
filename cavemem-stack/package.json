@@ -1,0 +1,21 @@
+{
+  "name": "cavemem-stack",
+  "version": "1.1.0",
+  "description": "Centralized, editor-agnostic global developer memory stack with local transformers + SQLite. Cross-platform (Linux/macOS/Windows).",
+  "main": "server.js",
+  "type": "module",
+  "scripts": {
+    "start": "node server.js",
+    "warm": "node -e \"import('./search-engine.js').then(m => m.getExtractor()).then(() => console.log('Model warmed'))\"",
+    "test": "echo \"Error: no test specified\" && exit 0"
+  },
+  "dependencies": {
+    "@huggingface/transformers": "^3.0.0",
+    "better-sqlite3": "^11.3.0",
+    "cors": "^2.8.5",
+    "ejs": "^3.1.10",
+    "express": "^4.19.2"
+  },
+  "author": "Ivan Masias",
+  "license": "MIT"
+}

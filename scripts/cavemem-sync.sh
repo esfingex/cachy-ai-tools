@@ -43,19 +43,36 @@ find_project_root() {
 PROJECT_ROOT=$(find_project_root)
 CONFIG_FILE="$HOME/.cavemem/sync_config.json"
 
-if [[ "$PROJECT_ROOT" != "$HOME" ]]; then
-    log_info "Project-isolated sync active for root: $PROJECT_ROOT"
+# v2 layout: cavemem-stack/dbs/<project>.db (one DB per project, all under repo dir).
+# Auto-detect: if CAVEMEM_STACK_DIR is set or default exists, use the new layout.
+# Otherwise fall back to legacy .cavemem/data.db so old setups keep working.
+DEFAULT_STACK_DIR="$HOME/Github/cachy-ai-tools/cavemem-stack"
+STACK_DIR="${CAVEMEM_STACK_DIR:-$DEFAULT_STACK_DIR}"
+
+if [ -d "$STACK_DIR/dbs" ]; then
+    # New stack layout: sync the entire dbs/ directory (all project DBs)
+    log_info "v2 stack layout detected at $STACK_DIR"
+    LOCAL_DIR="$STACK_DIR/dbs"
+    LOCAL_DB="$LOCAL_DIR"             # treated as a directory for rsync
+    REMOTE_DIR="$STACK_DIR/dbs"
+    REMOTE_DB="$REMOTE_DIR"
+    REMOTE_PROJECT_ROOT="$HOME"
+    SYNC_MODE="dir"
+elif [[ "$PROJECT_ROOT" != "$HOME" ]]; then
+    log_info "Legacy project-isolated sync for root: $PROJECT_ROOT"
     LOCAL_DIR="$PROJECT_ROOT/.cavemem"
     LOCAL_DB="$LOCAL_DIR/data.db"
     REMOTE_DIR="$PROJECT_ROOT/.cavemem"
     REMOTE_DB="$REMOTE_DIR/data.db"
     REMOTE_PROJECT_ROOT="$PROJECT_ROOT"
+    SYNC_MODE="file"
 else
     LOCAL_DIR="$HOME/.cavemem"
     LOCAL_DB="$LOCAL_DIR/data.db"
     REMOTE_DIR=".cavemem"
     REMOTE_DB="$REMOTE_DIR/data.db"
     REMOTE_PROJECT_ROOT="$HOME"
+    SYNC_MODE="file"
 fi
 
 # Ensure config directory exists
@@ -126,39 +143,71 @@ check_connection() {
 
 stop_workers() {
     log_info "Stopping local cavemem worker..."
-    HOME="$PROJECT_ROOT" cavemem stop >/dev/null 2>&1 || true
+    cavemem stop >/dev/null 2>&1 || HOME="$PROJECT_ROOT" cavemem stop >/dev/null 2>&1 || true
 
     log_info "Stopping remote cavemem worker..."
-    ssh -p "$REMOTE_PORT" "${REMOTE_USER}@${REMOTE_HOST}" "HOME=$REMOTE_PROJECT_ROOT cavemem stop" >/dev/null 2>&1 || true
+    ssh -p "$REMOTE_PORT" "${REMOTE_USER}@${REMOTE_HOST}" "cavemem stop" >/dev/null 2>&1 || true
 
-    # Wait for workers to fully shutdown and checkpoint SQLite database
     log_info "Waiting for database files to release safely..."
     sleep 2
 }
 
 start_workers() {
+    # v2 stack auto-starts via 'cavemem status' (ensure_server); legacy needs 'cavemem start'
     log_info "Restarting local cavemem worker..."
-    HOME="$PROJECT_ROOT" cavemem start >/dev/null 2>&1 || true
+    cavemem status >/dev/null 2>&1 || HOME="$PROJECT_ROOT" cavemem start >/dev/null 2>&1 || true
 
     log_info "Restarting remote cavemem worker..."
-    ssh -p "$REMOTE_PORT" "${REMOTE_USER}@${REMOTE_HOST}" "HOME=$REMOTE_PROJECT_ROOT cavemem start" >/dev/null 2>&1 || true
+    ssh -p "$REMOTE_PORT" "${REMOTE_USER}@${REMOTE_HOST}" "cavemem status >/dev/null 2>&1 || cavemem start >/dev/null 2>&1" >/dev/null 2>&1 || true
+}
+
+checkpoint_all_local() {
+    if [ "$SYNC_MODE" = "dir" ]; then
+        for db in "$LOCAL_DIR"/*.db; do
+            [ -f "$db" ] || continue
+            sqlite3 "$db" 'PRAGMA wal_checkpoint(TRUNCATE);' >/dev/null 2>&1 || true
+        done
+    else
+        sqlite3 "$LOCAL_DB" 'PRAGMA wal_checkpoint(TRUNCATE);' >/dev/null 2>&1 || true
+    fi
+}
+
+checkpoint_all_remote() {
+    if [ "$SYNC_MODE" = "dir" ]; then
+        ssh -p "$REMOTE_PORT" "${REMOTE_USER}@${REMOTE_HOST}" \
+            "for db in $REMOTE_DIR/*.db; do [ -f \"\$db\" ] && sqlite3 \"\$db\" 'PRAGMA wal_checkpoint(TRUNCATE);' >/dev/null 2>&1 || true; done" \
+            >/dev/null 2>&1 || true
+    else
+        ssh -p "$REMOTE_PORT" "${REMOTE_USER}@${REMOTE_HOST}" \
+            "sqlite3 $REMOTE_DB 'PRAGMA wal_checkpoint(TRUNCATE);'" >/dev/null 2>&1 || true
+    fi
 }
 
 sync_pull() {
     check_connection
     stop_workers
 
-    # Force WAL checkpoint on remote before pulling so data.db is complete
-    log_info "Checkpointing remote database..."
-    ssh -p "$REMOTE_PORT" "${REMOTE_USER}@${REMOTE_HOST}" "sqlite3 $REMOTE_DB 'PRAGMA wal_checkpoint(TRUNCATE);'" >/dev/null 2>&1 || true
+    log_info "Checkpointing remote database(s)..."
+    checkpoint_all_remote
 
     log_info "Pulling remote database from ${REMOTE_HOST}..."
-    if rsync -avz -e "ssh -p $REMOTE_PORT" "${REMOTE_USER}@${REMOTE_HOST}:$REMOTE_DB" "$LOCAL_DB"; then
-        # Force local WAL checkpoint after pull
-        sqlite3 "$LOCAL_DB" 'PRAGMA wal_checkpoint(TRUNCATE);' >/dev/null 2>&1 || true
-        log_success "Database successfully pulled from remote host."
+    if [ "$SYNC_MODE" = "dir" ]; then
+        mkdir -p "$LOCAL_DIR"
+        if rsync -avz --delete --exclude='*-wal' --exclude='*-shm' \
+                -e "ssh -p $REMOTE_PORT" \
+                "${REMOTE_USER}@${REMOTE_HOST}:$REMOTE_DIR/" "$LOCAL_DIR/"; then
+            checkpoint_all_local
+            log_success "Databases pulled from remote host."
+        else
+            log_error "Failed to pull databases."
+        fi
     else
-        log_error "Failed to pull database."
+        if rsync -avz -e "ssh -p $REMOTE_PORT" "${REMOTE_USER}@${REMOTE_HOST}:$REMOTE_DB" "$LOCAL_DB"; then
+            sqlite3 "$LOCAL_DB" 'PRAGMA wal_checkpoint(TRUNCATE);' >/dev/null 2>&1 || true
+            log_success "Database pulled from remote host."
+        else
+            log_error "Failed to pull database."
+        fi
     fi
 
     start_workers
@@ -168,18 +217,29 @@ sync_push() {
     check_connection
     stop_workers
 
-    # Force local WAL checkpoint so data.db is complete before pushing
-    log_info "Checkpointing local database..."
-    sqlite3 "$LOCAL_DB" 'PRAGMA wal_checkpoint(TRUNCATE);' >/dev/null 2>&1 || true
+    log_info "Checkpointing local database(s)..."
+    checkpoint_all_local
 
-    log_info "Pushing local database to ${REMOTE_HOST}..."
-    # Ensure remote directory exists and clean remote WAL files
-    ssh -p "$REMOTE_PORT" "${REMOTE_USER}@${REMOTE_HOST}" "mkdir -p $REMOTE_DIR && rm -f $REMOTE_DB-wal $REMOTE_DB-shm"
-
-    if rsync -avz -e "ssh -p $REMOTE_PORT" "$LOCAL_DB" "${REMOTE_USER}@${REMOTE_HOST}:$REMOTE_DB"; then
-        log_success "Database successfully pushed to remote host."
+    log_info "Pushing local database(s) to ${REMOTE_HOST}..."
+    if [ "$SYNC_MODE" = "dir" ]; then
+        ssh -p "$REMOTE_PORT" "${REMOTE_USER}@${REMOTE_HOST}" \
+            "mkdir -p $REMOTE_DIR && find $REMOTE_DIR -name '*-wal' -delete -o -name '*-shm' -delete" \
+            >/dev/null 2>&1 || true
+        if rsync -avz --delete --exclude='*-wal' --exclude='*-shm' \
+                -e "ssh -p $REMOTE_PORT" \
+                "$LOCAL_DIR/" "${REMOTE_USER}@${REMOTE_HOST}:$REMOTE_DIR/"; then
+            log_success "Databases pushed to remote host."
+        else
+            log_error "Failed to push databases."
+        fi
     else
-        log_error "Failed to push database."
+        ssh -p "$REMOTE_PORT" "${REMOTE_USER}@${REMOTE_HOST}" \
+            "mkdir -p $REMOTE_DIR && rm -f $REMOTE_DB-wal $REMOTE_DB-shm"
+        if rsync -avz -e "ssh -p $REMOTE_PORT" "$LOCAL_DB" "${REMOTE_USER}@${REMOTE_HOST}:$REMOTE_DB"; then
+            log_success "Database pushed to remote host."
+        else
+            log_error "Failed to push database."
+        fi
     fi
 
     start_workers
@@ -188,20 +248,37 @@ sync_push() {
 show_status() {
     check_connection
 
-    log_info "Checking local database..."
-    if [ -f "$LOCAL_DB" ]; then
-        LOCAL_TIME=$(stat -c %Y "$LOCAL_DB")
-        LOCAL_SIZE=$(stat -c %s "$LOCAL_DB")
-        log_info "Local DB: $(date -d @"$LOCAL_TIME") ($LOCAL_SIZE bytes)"
+    log_info "Checking local database(s)..."
+    if [ "$SYNC_MODE" = "dir" ]; then
+        if [ -d "$LOCAL_DIR" ] && compgen -G "$LOCAL_DIR/*.db" >/dev/null; then
+            LOCAL_TIME=$(stat -c %Y "$LOCAL_DIR"/*.db 2>/dev/null | sort -nr | head -1)
+            LOCAL_SIZE=$(du -sb "$LOCAL_DIR"/*.db 2>/dev/null | awk '{s+=$1} END {print s}')
+            log_info "Local: $(find "$LOCAL_DIR" -maxdepth 1 -name '*.db' | wc -l) DB(s) · newest: $(date -d @"$LOCAL_TIME") · total $LOCAL_SIZE bytes"
+        else
+            log_warn "No local DBs found at $LOCAL_DIR."
+            LOCAL_TIME=0
+        fi
     else
-        log_warn "Local DB file does not exist yet."
-        LOCAL_TIME=0
+        if [ -f "$LOCAL_DB" ]; then
+            LOCAL_TIME=$(stat -c %Y "$LOCAL_DB")
+            LOCAL_SIZE=$(stat -c %s "$LOCAL_DB")
+            log_info "Local DB: $(date -d @"$LOCAL_TIME") ($LOCAL_SIZE bytes)"
+        else
+            log_warn "Local DB file does not exist yet."
+            LOCAL_TIME=0
+        fi
     fi
 
-    log_info "Checking remote database..."
-    REMOTE_STAT=$(ssh -p "$REMOTE_PORT" "${REMOTE_USER}@${REMOTE_HOST}" "stat -c '%Y %s' $REMOTE_DB 2>/dev/null" || echo "0 0")
-    REMOTE_TIME=$(echo "$REMOTE_STAT" | cut -d' ' -f1)
+    log_info "Checking remote database(s)..."
+    if [ "$SYNC_MODE" = "dir" ]; then
+        REMOTE_STAT=$(ssh -p "$REMOTE_PORT" "${REMOTE_USER}@${REMOTE_HOST}" \
+            "find $REMOTE_DIR -maxdepth 1 -name '*.db' -printf '%T@ %s\n' 2>/dev/null | sort -nr | head -1" || echo "0 0")
+    else
+        REMOTE_STAT=$(ssh -p "$REMOTE_PORT" "${REMOTE_USER}@${REMOTE_HOST}" "stat -c '%Y %s' $REMOTE_DB 2>/dev/null" || echo "0 0")
+    fi
+    REMOTE_TIME=$(echo "$REMOTE_STAT" | cut -d' ' -f1 | cut -d. -f1)
     REMOTE_SIZE=$(echo "$REMOTE_STAT" | cut -d' ' -f2)
+    REMOTE_TIME=${REMOTE_TIME:-0}
 
     if [ "$REMOTE_TIME" -gt 0 ]; then
         log_info "Remote DB: $(date -d @"$REMOTE_TIME") ($REMOTE_SIZE bytes)"

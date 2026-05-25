@@ -1,1 +1,18 @@
 scripts/workspace-sync.sh
+
+# CaveMem stack
+cavemem-stack/node_modules/
+cavemem-stack/.cache/
+cavemem-stack/dbs/*.db
+cavemem-stack/dbs/*.db-journal
+cavemem-stack/dbs/*.db-wal
+cavemem-stack/dbs/*.db-shm
+cavemem-stack/.env
+
+# General
+.env
+.env.local
+*.log
+.DS_Store
+.vscode/
+.idea/
