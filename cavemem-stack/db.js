@@ -142,31 +142,63 @@ export async function updateMemory(project, id, { category, content, tags }) {
 }
 
 export async function searchMemories(project, queryText, limit = 5, threshold = DEFAULT_SCORE_THRESHOLD) {
-  const db = getDatabase(project);
   const queryVector = await getEmbedding(queryText);
 
+  // Search project DB
+  const db = getDatabase(project);
   const rows = db.prepare(`SELECT id, category, content, tags, vector, created_at FROM memories`).all();
 
-  const scored = [];
-  for (const row of rows) {
+  // Search common/global DB (if we're not already searching it)
+  const isGlobal = project.toLowerCase() === 'common' || project.toLowerCase() === 'global';
+  let globalRows = [];
+  if (!isGlobal) {
     try {
-      const vector = JSON.parse(row.vector);
-      if (vector.length !== queryVector.length) continue;
-      const score = cosineSimilarity(queryVector, vector);
-      scored.push({
-        id: row.id,
-        category: row.category,
-        content: row.content,
-        tags: parseTags(row.tags),
-        created_at: row.created_at,
-        score: Math.round(score * 10000) / 10000
-      });
+      const globalDb = getDatabase('common');
+      globalRows = globalDb.prepare(`SELECT id, category, content, tags, vector, created_at FROM memories`).all();
     } catch (e) {
-      console.error(`[DB] Error parsing vector for memory ID ${row.id}:`, e.message);
+      // Ignore if common DB does not exist or fails
     }
   }
 
-  return scored
+  const scored = [];
+  const processRows = (rowList, source) => {
+    for (const row of rowList) {
+      try {
+        const vector = JSON.parse(row.vector);
+        if (vector.length !== queryVector.length) continue;
+        const score = cosineSimilarity(queryVector, vector);
+        scored.push({
+          id: row.id,
+          category: row.category,
+          content: row.content,
+          tags: parseTags(row.tags),
+          created_at: row.created_at,
+          score: Math.round(score * 10000) / 10000,
+          source: source
+        });
+      } catch (e) {
+        console.error(`[DB] Error parsing vector for memory ID ${row.id} in ${source}:`, e.message);
+      }
+    }
+  };
+
+  processRows(rows, 'project');
+  if (globalRows.length > 0) {
+    processRows(globalRows, 'global');
+  }
+
+  // Deduplicate by normalized content
+  const seenContent = new Set();
+  const dedupedScored = [];
+  for (const item of scored) {
+    const normContent = item.content.trim().toLowerCase();
+    if (!seenContent.has(normContent)) {
+      seenContent.add(normContent);
+      dedupedScored.push(item);
+    }
+  }
+
+  return dedupedScored
     .filter(item => item.score >= threshold)
     .sort((a, b) => b.score - a.score)
     .slice(0, limit);
