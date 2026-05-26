@@ -180,6 +180,72 @@ if command -v npx &>/dev/null; then
         || log_warn "Could not install caveman skills (non-fatal)."
 fi
 
+# 6. Install and configure RTK (Rust Token Killer) for transparent AI token reduction
+log_info "Installing RTK (Rust Token Killer) to slash AI token consumption..."
+RTK_INSTALL_CMD="curl -fsSL https://raw.githubusercontent.com/rtk-ai/rtk/refs/heads/master/install.sh"
+if sudo -u "$TARGET_USER" env PATH="$PATH" HOME="$TARGET_HOME" bash -c "$RTK_INSTALL_CMD | sh"; then
+    log_success "RTK successfully installed."
+    
+    # Initialize default configuration if not present
+    sudo -u "$TARGET_USER" env PATH="$PATH" HOME="$TARGET_HOME" rtk config --create &>/dev/null || true
+    
+    # Register hooks for various AI agents so command output is auto-compressed
+    log_info "Configuring transparent RTK hooks for multi-agent ecosystem..."
+    
+    # Claude Code
+    sudo -u "$TARGET_USER" env PATH="$PATH" HOME="$TARGET_HOME" rtk init -g --agent claude --auto-patch &>/dev/null \
+        && log_success "RTK integrated with Claude Code" || log_warn "Could not register Claude Code hooks."
+        
+    # Cursor IDE
+    sudo -u "$TARGET_USER" env PATH="$PATH" HOME="$TARGET_HOME" rtk init -g --agent cursor --auto-patch &>/dev/null \
+        && log_success "RTK integrated with Cursor Cascade" || log_warn "Could not register Cursor hooks."
+        
+    # Cline / Roo Code
+    sudo -u "$TARGET_USER" env PATH="$PATH" HOME="$TARGET_HOME" rtk init -g --agent cline --auto-patch &>/dev/null \
+        && log_success "RTK integrated with Cline/RooCode" || log_warn "Could not register Cline hooks."
+        
+    # Windsurf IDE
+    sudo -u "$TARGET_USER" env PATH="$PATH" HOME="$TARGET_HOME" rtk init -g --agent windsurf --auto-patch &>/dev/null \
+        && log_success "RTK integrated with Windsurf Cascade" || log_warn "Could not register Windsurf hooks."
+        
+    # GitHub Copilot CLI
+    sudo -u "$TARGET_USER" env PATH="$PATH" HOME="$TARGET_HOME" rtk init -g --copilot --auto-patch &>/dev/null \
+        && log_success "RTK integrated with GitHub Copilot" || log_warn "Could not register Copilot hooks."
+        
+    # Google Antigravity (Project-scoped)
+    sudo -u "$TARGET_USER" env PATH="$PATH" HOME="$TARGET_HOME" rtk init --agent antigravity &>/dev/null \
+        && log_success "RTK integrated with Google Antigravity in cachy-ai-tools" || log_warn "Could not register Antigravity rules locally."
+        
+    # Integrate Antigravity rules into Thatch workspace if it exists
+    if [ -d "$TARGET_HOME/workspace/thatch" ]; then
+        (
+            cd "$TARGET_HOME/workspace/thatch"
+            sudo -u "$TARGET_USER" env PATH="$PATH" HOME="$TARGET_HOME" rtk init --agent antigravity &>/dev/null \
+                && log_success "RTK integrated with Google Antigravity in Thatch workspace" || true
+        )
+    fi
+
+    # Add convenient aliases for manual CLI power
+    log_info "Injecting shell aliases for human terminal usage..."
+    for rc_file in "$TARGET_HOME/.bashrc" "$TARGET_HOME/.zshrc"; do
+        if [ -f "$rc_file" ]; then
+            if ! grep -q "alias git='rtk git'" "$rc_file"; then
+                echo -e "\n# RTK (Rust Token Killer) - High performance CLI proxies" >> "$rc_file"
+                echo "if command -v rtk &>/dev/null; then" >> "$rc_file"
+                echo "    alias git='rtk git'" >> "$rc_file"
+                echo "    alias ls='rtk ls'" >> "$rc_file"
+                echo "    alias tree='rtk tree'" >> "$rc_file"
+                echo "    alias grep='rtk grep'" >> "$rc_file"
+                echo "    alias find='rtk find'" >> "$rc_file"
+                echo "fi" >> "$rc_file"
+                log_success "Added RTK shell aliases to $rc_file"
+            fi
+        fi
+    done
+else
+    log_warn "Failed to install RTK. Moving on."
+fi
+
 log_success "Ecosystem setup completed."
 
 echo -e "\n${YELLOW}🛸 Next Steps:${RESET}"
