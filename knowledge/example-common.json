@@ -36,6 +36,21 @@
       "category": "flow",
       "tags": ["workflow", "meta"],
       "content": "[Your agent workflow — e.g. when to search memory, when to save, how to tag, what categories mean]"
+    },
+    {
+      "category": "rule",
+      "tags": ["rtk", "law", "token-killer", "optimization", "global"],
+      "content": "Law Seven: prefix development CLI commands with rtk. Intercepts and condenses outputs of git status/diff, find, grep, pytest, npm, cargo by 60-90% to prevent token overflow. Run rtk gain to check token savings stats."
+    },
+    {
+      "category": "config",
+      "tags": ["rtk", "hooks", "environment", "global", "claude", "cursor", "cline"],
+      "content": "RTK Integration: run rtk init -g --agent <agent_name> to auto-patch agent configs (Claude, Cursor, Cline, Windsurf) for transparent bash execution. Global config lives at ~/.config/rtk/config.toml, generated via rtk config --create. Exclude commands under [hooks] exclude_commands."
+    },
+    {
+      "category": "config",
+      "tags": ["rtk", "shell", "aliases", "bash", "zsh"],
+      "content": "RTK Shell Aliases: set aliases in ~/.bashrc or ~/.zshrc for transparent human use (git='rtk git', ls='rtk ls', tree='rtk tree', grep='rtk grep', find='rtk find'). Prefix command with backslash (e.g. \\git) to run uncompressed raw binary."
     }
   ]
 }
