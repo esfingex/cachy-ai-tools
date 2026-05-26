@@ -55,7 +55,12 @@ export function getDatabase(projectName) {
   const safeName = cleanProjectName(projectName);
   if (dbConnections.has(safeName)) return dbConnections.get(safeName);
 
-  const dbPath = path.join(DBS_DIR, `${safeName}.db`);
+  // Each project lives in its own subdirectory: dbs/<project>/<project>.db
+  const projectDir = path.join(DBS_DIR, safeName);
+  if (!fs.existsSync(projectDir)) {
+    fs.mkdirSync(projectDir, { recursive: true });
+  }
+  const dbPath = path.join(projectDir, `${safeName}.db`);
   const db = new Database(dbPath);
   db.pragma('journal_mode = WAL');
   db.pragma('synchronous = NORMAL');
@@ -238,7 +243,7 @@ export function deleteMemory(project, id) {
 
 export function getProjectStats(project) {
   const safeName = cleanProjectName(project);
-  const dbPath = path.join(DBS_DIR, `${safeName}.db`);
+  const dbPath = path.join(DBS_DIR, safeName, `${safeName}.db`);
   let size = 0;
   if (fs.existsSync(dbPath)) size = fs.statSync(dbPath).size;
 
@@ -258,9 +263,12 @@ export function getProjectStats(project) {
 
 export function listAllProjects() {
   if (!fs.existsSync(DBS_DIR)) return [];
-  return fs.readdirSync(DBS_DIR)
-    .filter(file => file.endsWith('.db'))
-    .map(file => file.replace('.db', ''));
+  // Projects are subdirectories that contain a matching <name>.db inside
+  return fs.readdirSync(DBS_DIR, { withFileTypes: true })
+    .filter(entry => entry.isDirectory())
+    .filter(entry => fs.existsSync(path.join(DBS_DIR, entry.name, `${entry.name}.db`)))
+    .map(entry => entry.name)
+    .sort();
 }
 
 /**

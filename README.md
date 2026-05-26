@@ -31,7 +31,13 @@ Isolated from core system tweaks → lightweight, clean, reproducible.
    - Auto-detects v2 (sync entire `cavemem-stack/dbs/`) vs legacy (single `data.db`) layout.
    - WAL-checkpoints before/after rsync to guarantee consistent snapshots.
 
-5. **[`prompts/ai-rules.md`](prompts/ai-rules.md) — Token-reduction system prompt**
+5. **[`scripts/cavemem-migrate.js`](scripts/cavemem-migrate.js) — DB migration/cleanup tool**
+   - Moves memories between projects via the REST API (copy → delete).
+   - Removes orphan `.db` files (empty projects with no memories).
+   - Dry-run mode for safe preview before executing.
+   - Configurable via `MIGRATION_RULES` and `ORPHAN_PROJECTS` constants.
+
+6. **[`prompts/ai-rules.md`](prompts/ai-rules.md) — Token-reduction system prompt**
    - Strips pleasantries, adverbs, filler. ~70% token reduction with full technical substance preserved.
 
 ---
@@ -58,7 +64,7 @@ cavemem web           # open http://127.0.0.1:3000 in browser
 
 ### 1. Cross-Session Persistent Memory (`cavemem`)
 
-The project context is auto-derived from the current directory name. Each project gets its own SQLite DB under `cavemem-stack/dbs/<project>.db`.
+The project context is auto-derived from the current directory name. Each project gets its own subdirectory under `~/.cavemem/dbs/<project>/<project>.db`.
 
 ```bash
 # Record a fact
@@ -175,6 +181,46 @@ npx skills add JuliusBrussee/caveman
 ```
 
 Plus the rules in [`prompts/ai-rules.md`](prompts/ai-rules.md) for your agent's system config.
+
+---
+
+## 🗄️ DB Project Naming Conventions
+
+Each project gets its own SQLite file at `~/.cavemem/dbs/<project>.db`. Follow this naming to keep memories well-organized:
+
+| Project name | Contents | Notes |
+|---|---|---|
+| `<project-name>` | Memories specific to that project | e.g. `solaria`, `thatch` → `dbs/solaria/solaria.db` |
+| `common` | Truly cross-project rules (env, OS, global agent rules) | Keep lean — auto-loaded on every search |
+
+> **Rule**: project-specific rules go in the project DB. Only put in `common` what applies to **every** project universally (e.g. CachyOS env quirks, global agent behavior rules).
+
+### Filesystem layout
+
+```
+~/.cavemem/
+└── dbs/
+    ├── common/
+    │   └── common.db
+    ├── solaria/
+    │   └── solaria.db
+    └── thatch/
+        └── thatch.db
+```
+
+### Migration tool usage
+
+If you find memories in the wrong project, use [`scripts/cavemem-migrate.js`](scripts/cavemem-migrate.js):
+
+```bash
+# Preview (no changes)
+node scripts/cavemem-migrate.js --dry-run --verbose
+
+# Execute
+node scripts/cavemem-migrate.js
+```
+
+Edit `MIGRATION_RULES` at the top of the script to define source → destination moves with optional content filters.
 
 ---
 

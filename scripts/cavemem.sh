@@ -111,6 +111,10 @@ show_help() {
     cavemem web
     cavemem stop                             (stop background server)
 
+  Knowledge Seeds:
+    cavemem seed --file <path/to/seed.json>  (import knowledge from JSON — idempotent)
+    cavemem seed --file <path> --dry-run     (preview without inserting)
+
   Maintenance:
     cavemem dedup     [-T 0.92] [-c <cat>]   (scan, list duplicate pairs)
     cavemem merge     <keepId> <dropId> [--append]
@@ -485,6 +489,20 @@ cmd_autodedup() {
     echo ""
 }
 
+cmd_seed() {
+    require_node
+    local seed_script
+    seed_script="$(cd "$SCRIPT_DIR/.." && pwd)/scripts/cavemem-seed.js"
+
+    if [ ! -f "$seed_script" ]; then
+        log_error "cavemem-seed.js not found at: $seed_script"
+        exit 1
+    fi
+
+    # Pass all args through to the seed script
+    node "$seed_script" "$@"
+}
+
 cmd_reembed() {
     local force=false
     for a in "$@"; do
@@ -532,6 +550,7 @@ case "${ACTION,,}" in
     status)           cmd_status ;;
     delete)           shift; cmd_delete "$@" ;;
     web)              cmd_web ;;
+    seed)             shift; cmd_seed "$@" ;;
     dedup)            shift; cmd_dedup "$@" ;;
     merge)            shift; cmd_merge "$@" ;;
     autodedup)        shift; cmd_autodedup "$@" ;;

@@ -9,6 +9,10 @@ cavemem-stack/dbs/*.db-wal
 cavemem-stack/dbs/*.db-shm
 cavemem-stack/.env
 
+# Knowledge seeds — personal files are private, only example-* are committed
+knowledge/*.json
+!knowledge/example-*.json
+
 # General
 .env
 .env.local

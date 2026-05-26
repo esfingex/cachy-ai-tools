@@ -1,0 +1,41 @@
+{
+  "_description": "Example seed file for the 'common' project (global rules loaded on every search). Copy this to knowledge/common.json and fill it with YOUR own rules, laws, and patterns. This file IS committed — common.json is NOT.",
+  "project": "common",
+  "seeds": [
+    {
+      "category": "rule",
+      "tags": ["law", "meta", "global"],
+      "content": "Law Zero: [your first universal law here — e.g. token protection, syntax conventions, output format rules]"
+    },
+    {
+      "category": "rule",
+      "tags": ["law", "meta", "context"],
+      "content": "Law One: [your second universal law — e.g. context-aware retrieval, memory lookup workflow]"
+    },
+    {
+      "category": "config",
+      "tags": ["environment", "system"],
+      "content": "[Your OS/environment config — e.g. distro, kernel, package manager, system Python path, Node version]"
+    },
+    {
+      "category": "rule",
+      "tags": ["language", "patterns"],
+      "content": "[Your primary language rules — e.g. typing conventions, style preferences, patterns to always/never use]"
+    },
+    {
+      "category": "rule",
+      "tags": ["testing"],
+      "content": "[Your testing rules — e.g. isolation strategy, mocking conventions, framework preferences]"
+    },
+    {
+      "category": "rule",
+      "tags": ["git", "commits"],
+      "content": "[Your commit convention — e.g. conventional commits format, length limits, scope rules]"
+    },
+    {
+      "category": "flow",
+      "tags": ["workflow", "meta"],
+      "content": "[Your agent workflow — e.g. when to search memory, when to save, how to tag, what categories mean]"
+    }
+  ]
+}
