@@ -40,7 +40,7 @@
     {
       "category": "rule",
       "tags": ["rtk", "law", "token-killer", "optimization", "global"],
-      "content": "Law Seven: prefix development CLI commands with rtk. Intercepts and condenses outputs of git status/diff, find, grep, pytest, npm, cargo by 60-90% to prevent token overflow. Run rtk gain to check token savings stats."
+      "content": "Law Seven: prefix development CLI commands with rtk. Intercepts and condenses outputs of git status/diff, find, grep, pytest, npm, cargo by 60-90% to prevent token overflow. Always prioritize local shell commands with RTK over remote GitHub MCP tools for all local repository operations (status, diff, log, file contents). Use github-mcp-server exclusively for remote-only actions (PRs, issues, forks, reviews)."
     },
     {
       "category": "config",
