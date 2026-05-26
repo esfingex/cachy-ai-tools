@@ -80,6 +80,17 @@ chmod +x "$CLI_SRC"
 ln -sf "$CLI_SRC" "$BIN_LINK"
 log_ok "Linked: $BIN_LINK -> $CLI_SRC"
 
+# 4.5 Ensure secure private database folder
+CAVEMEM_USER_HOME="${HOME:-/home/$(whoami)}"
+CAVEMEM_PRIVATE_DBS="$CAVEMEM_USER_HOME/.cavemem/dbs"
+log_info "Ensuring secure database directory at $CAVEMEM_PRIVATE_DBS..."
+mkdir -p "$CAVEMEM_PRIVATE_DBS"
+if [ -d "$STACK_DIR/dbs" ]; then
+    log_info "Migrating legacy local DB files..."
+    mv "$STACK_DIR/dbs"/*.db* "$CAVEMEM_PRIVATE_DBS/" 2>/dev/null || true
+    rmdir "$STACK_DIR/dbs" 2>/dev/null || true
+fi
+
 # 5. Optional: systemd user service (recommended for always-on background)
 SYSTEMD_USER_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/systemd/user"
 INSTALL_UNIT="${CAVEMEM_INSTALL_UNIT:-no}"
@@ -97,6 +108,7 @@ WorkingDirectory=$STACK_DIR
 ExecStart=$(command -v node) server.js
 Restart=on-failure
 Environment=CAVEMEM_HOST=127.0.0.1
+Environment=CAVEMEM_DBS_DIR=$CAVEMEM_PRIVATE_DBS
 
 [Install]
 WantedBy=default.target
